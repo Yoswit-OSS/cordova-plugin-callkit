@@ -20,6 +20,8 @@ import android.Manifest;
 import android.telecom.Connection;
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import android.graphics.drawable.Icon;
@@ -38,12 +40,19 @@ public class CordovaCall extends CordovaPlugin {
     private PhoneAccount phoneAccount;
     private CallbackContext callbackContext;
     private String appName;
-    private String from;
+    private static String from;
     private String to;
     private String realCallTo;
     private static HashMap<String, ArrayList<CallbackContext>> callbackContextMap = new HashMap<String, ArrayList<CallbackContext>>();
     private static CordovaInterface cordovaInterface;
     private static Icon icon;
+
+    private static JSONObject payload;
+    private static CordovaCall cordovaCallInstance = null;
+
+//    CordovaCall() {
+//        cordovaCallInstance = CordovaCall.this;
+//    }
 
     public static HashMap<String, ArrayList<CallbackContext>> getCallbackContexts() {
         return callbackContextMap;
@@ -59,6 +68,7 @@ public class CordovaCall extends CordovaPlugin {
 
     @Override
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
+        cordovaCallInstance = CordovaCall.this;
         cordovaInterface = cordova;
         super.initialize(cordova, webView);
         appName = getApplicationName(this.cordova.getActivity().getApplicationContext());
@@ -74,7 +84,7 @@ public class CordovaCall extends CordovaPlugin {
           phoneAccount = new PhoneAccount.Builder(handle, appName)
                    .setCapabilities(PhoneAccount.CAPABILITY_CALL_PROVIDER)
                    .build();
-          tm.registerPhoneAccount(phoneAccount);          
+          tm.registerPhoneAccount(phoneAccount);
         }
         callbackContextMap.put("answer",new ArrayList<CallbackContext>());
         callbackContextMap.put("reject",new ArrayList<CallbackContext>());
@@ -93,19 +103,7 @@ public class CordovaCall extends CordovaPlugin {
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         this.callbackContext = callbackContext;
         if (action.equals("receiveCall")) {
-            Connection conn = MyConnectionService.getConnection();
-            if(conn != null) {
-                if(conn.getState() == Connection.STATE_ACTIVE) {
-                    this.callbackContext.error("You can't receive a call right now because you're already in a call");
-                } else {
-                    this.callbackContext.error("You can't receive a call right now");
-                }
-            } else {
-                from = args.getString(0);
-                permissionCounter = 2;
-                pendingAction = "receiveCall";
-                this.checkCallPermission();
-            }
+            this.handleReceiveCall(args.getString(0));
             return true;
         } else if (action.equals("sendCall")) {
             Connection conn = MyConnectionService.getConnection();
@@ -226,8 +224,27 @@ public class CordovaCall extends CordovaPlugin {
               this.callbackContext.error("Call Failed. You need to enter a phone number.");
             }
             return true;
+        } else if (action.equals("notification")) {
+            CordovaCall.onReceiveCallNotify(new JSONObject(args.getString(0)));
+            return true;
         }
         return false;
+    }
+
+    private void handleReceiveCall(String callName) {
+        Connection conn = MyConnectionService.getConnection();
+        if(conn != null) {
+            if(conn.getState() == Connection.STATE_ACTIVE) {
+                this.callbackContext.error("You can't receive a call right now because you're already in a call");
+            } else {
+                this.callbackContext.error("You can't receive a call right now");
+            }
+        } else {
+            from = callName;
+            permissionCounter = 2;
+            pendingAction = "receiveCall";
+            this.checkCallPermission();
+        }
     }
 
     private void checkCallPermission() {
@@ -337,5 +354,52 @@ public class CordovaCall extends CordovaPlugin {
                 this.callNumber();
                 break;
         }
+    }
+
+    public static void triggerAnswerCallResponse() {
+        ArrayList<CallbackContext> callbackContexts = callbackContextMap.get("answer");
+        for (final CallbackContext callbackContext : callbackContexts) {
+            cordovaInterface.getThreadPool().execute(new Runnable() {
+                public void run() {
+                    PluginResult result = new PluginResult(PluginResult.Status.OK, CordovaCall.getContactActive());
+                    result.setKeepCallback(true);
+                    callbackContext.sendPluginResult(result);
+                }
+            });
+        }
+    }
+
+    public static void triggerRejectCallResponse() {
+        ArrayList<CallbackContext> callbackContexts = callbackContextMap.get("reject");
+        for (final CallbackContext callbackContext : callbackContexts) {
+            cordovaInterface.getThreadPool().execute(new Runnable() {
+                public void run() {
+                    PluginResult result = new PluginResult(PluginResult.Status.OK, CordovaCall.getContactActive());
+                    result.setKeepCallback(true);
+                    callbackContext.sendPluginResult(result);
+                }
+            });
+        }
+    }
+
+    // Receive FCM notification and active incoming call
+    public static void onReceiveCallNotify(JSONObject payload) {
+        try {
+            CordovaCall.payload = payload;
+            cordovaCallInstance.handleReceiveCall(payload.getString("callName"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static JSONObject getContactActive() {
+        JSONObject json = new JSONObject();
+        try {
+            json.put("callName", from);
+            json.put("payload", payload);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return json;
     }
 }

@@ -86,6 +86,10 @@ exports.callNumber = function(to, success, error) {
     exec(success, error, "CordovaCall", "callNumber", [to]);
 };
 
+exports.notification = function(payload, success, error) {
+  exec(success, error, "CordovaCall", "notification", [payload]);
+};
+
 exports.on = function(e, f) {
     var success = function(message) {
       f(message);

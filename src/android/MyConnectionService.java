@@ -15,7 +15,6 @@ import android.telecom.TelecomManager;
 import android.os.Handler;
 import android.net.Uri;
 import java.util.ArrayList;
-import android.util.Log;
 
 public class MyConnectionService extends ConnectionService {
 
@@ -39,16 +38,7 @@ public class MyConnectionService extends ConnectionService {
                 Intent intent = new Intent(CordovaCall.getCordova().getActivity().getApplicationContext(), CordovaCall.getCordova().getActivity().getClass());
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 CordovaCall.getCordova().getActivity().getApplicationContext().startActivity(intent);
-                ArrayList<CallbackContext> callbackContexts = CordovaCall.getCallbackContexts().get("answer");
-                for (final CallbackContext callbackContext : callbackContexts) {
-                    CordovaCall.getCordova().getThreadPool().execute(new Runnable() {
-                        public void run() {
-                            PluginResult result = new PluginResult(PluginResult.Status.OK, "answer event called successfully");
-                            result.setKeepCallback(true);
-                            callbackContext.sendPluginResult(result);
-                        }
-                    });
-                }
+                CordovaCall.triggerAnswerCallResponse();
             }
 
             @Override
@@ -57,16 +47,7 @@ public class MyConnectionService extends ConnectionService {
                 this.setDisconnected(cause);
                 this.destroy();
                 conn = null;
-                ArrayList<CallbackContext> callbackContexts = CordovaCall.getCallbackContexts().get("reject");
-                for (final CallbackContext callbackContext : callbackContexts) {
-                    CordovaCall.getCordova().getThreadPool().execute(new Runnable() {
-                        public void run() {
-                            PluginResult result = new PluginResult(PluginResult.Status.OK, "reject event called successfully");
-                            result.setKeepCallback(true);
-                            callbackContext.sendPluginResult(result);
-                        }
-                    });
-                }
+                CordovaCall.triggerRejectCallResponse();
             }
 
             @Override
