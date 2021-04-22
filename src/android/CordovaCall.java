@@ -360,10 +360,12 @@ public class CordovaCall extends CordovaPlugin {
 
     public static void triggerAnswerCallResponse() {
         ArrayList<CallbackContext> callbackContexts = callbackContextMap.get("answer");
+        JSONObject contact = CordovaCall.getContactActive();
+        CordovaCall.payload = null;
         for (final CallbackContext callbackContext : callbackContexts) {
             cordovaInterface.getThreadPool().execute(new Runnable() {
                 public void run() {
-                    PluginResult result = new PluginResult(PluginResult.Status.OK, CordovaCall.getContactActive());
+                    PluginResult result = new PluginResult(PluginResult.Status.OK, contact);
                     result.setKeepCallback(true);
                     callbackContext.sendPluginResult(result);
                 }
@@ -373,10 +375,12 @@ public class CordovaCall extends CordovaPlugin {
 
     public static void triggerRejectCallResponse() {
         ArrayList<CallbackContext> callbackContexts = callbackContextMap.get("reject");
+        JSONObject contact = CordovaCall.getContactActive();
+        CordovaCall.payload = null;
         for (final CallbackContext callbackContext : callbackContexts) {
             cordovaInterface.getThreadPool().execute(new Runnable() {
                 public void run() {
-                    PluginResult result = new PluginResult(PluginResult.Status.OK, CordovaCall.getContactActive());
+                    PluginResult result = new PluginResult(PluginResult.Status.OK, contact);
                     result.setKeepCallback(true);
                     callbackContext.sendPluginResult(result);
                 }

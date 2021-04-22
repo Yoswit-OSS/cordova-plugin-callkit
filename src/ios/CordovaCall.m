@@ -18,11 +18,11 @@ BOOL enableDTMF = NO;
 BOOL isRinging = NO;
 PKPushRegistry *_voipRegistry;
 
-NSMutableDictionary<NSString*, NSDictionary*> *callReceives;
+NSMutableDictionary<NSString*, NSMutableDictionary*> *callReceives;
 NSUUID* pendingAnwser;
 NSUUID* pendingReject;
 
-NSDictionary* payloadData;
+NSDictionary *payloadData;
 NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
 
 static CordovaCall *cordovaCallInstance;
@@ -249,8 +249,10 @@ static CordovaCall *cordovaCallInstance;
 }
 
 - (void)saveCallInfo:(NSString*)callUUID callName:(NSString*)callName callId:(NSString*)callId  {
-    NSDictionary *callData = @{@"callName":callName, @"callId": callId};
-    callReceives[callUUID] = callData;
+    NSMutableDictionary *contact = [[NSMutableDictionary alloc] init];
+    contact[@"callName"] = callName;
+    contact[@"callId"] = callId;
+    callReceives[callUUID] = contact;
 }
 
 - (void)sendCall:(CDVInvokedUrlCommand*)command
@@ -572,9 +574,9 @@ static CordovaCall *cordovaCallInstance;
 }
 
 - (void)triggerAnswerCallResponse:(NSUUID*) callUUID {
-    NSDictionary *contact = callReceives[[callUUID UUIDString]] ?: @{};
-    if (payloadData && [payloadData count] > 0) {
-        contact["payload"] = payloadData;
+    NSMutableDictionary *contact = callReceives[[callUUID UUIDString]] ?: [[NSMutableDictionary alloc] init];
+    if (payloadData) {
+        contact[@"payload"] = payloadData;
         payloadData = nil;
     }
     NSLog(@"[objC] answer data: %@ %@", [callUUID UUIDString], contact);
@@ -587,9 +589,9 @@ static CordovaCall *cordovaCallInstance;
 }
 
 - (void)triggerRejectCallResponse:(NSUUID*) callUUID {
-    NSDictionary *contact = callReceives[[callUUID UUIDString]] ?: @{};
-    if (payloadData && [payloadData count] > 0) {
-        contact["payload"] = payloadData;
+    NSMutableDictionary *contact = callReceives[[callUUID UUIDString]] ?: [[NSMutableDictionary alloc] init];
+    if (payloadData) {
+        contact[@"payload"] = payloadData;
         payloadData = nil;
     }
     NSLog(@"[objC] reject data: %@ %@", [callUUID UUIDString],contact);
@@ -679,10 +681,9 @@ static CordovaCall *cordovaCallInstance;
     NSLog(@"[objC] received VoIP message: %@", message);
     
     NSDictionary *data = payload.dictionaryPayload[@"data"];
+    payloadData = data;
     NSLog(@"[objC] received data: %@", data);
 
-    payloadData = data;
-    
     NSMutableDictionary* results = [NSMutableDictionary dictionaryWithCapacity:2];
     [results setObject:message forKey:@"function"];
     [results setObject:@"" forKey:@"extra"];
@@ -697,8 +698,6 @@ static CordovaCall *cordovaCallInstance;
         NSData * jsonData = [NSJSONSerialization dataWithJSONObject:data options:0 error:&err];
         NSString * dataString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
         [results setObject:dataString forKey:@"extra"];
-        
-
     }
     @catch (NSException *exception) {
         NSLog(@"[objC] error: %@", exception.reason);
