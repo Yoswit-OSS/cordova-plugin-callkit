@@ -46,13 +46,8 @@ public class CordovaCall extends CordovaPlugin {
     private static HashMap<String, ArrayList<CallbackContext>> callbackContextMap = new HashMap<String, ArrayList<CallbackContext>>();
     private static CordovaInterface cordovaInterface;
     private static Icon icon;
-
     private static JSONObject payload;
     private static CordovaCall cordovaCallInstance = null;
-
-//    CordovaCall() {
-//        cordovaCallInstance = CordovaCall.this;
-//    }
 
     public static HashMap<String, ArrayList<CallbackContext>> getCallbackContexts() {
         return callbackContextMap;
@@ -97,6 +92,13 @@ public class CordovaCall extends CordovaPlugin {
     public void onResume(boolean multitasking) {
         super.onResume(multitasking);
         this.checkCallPermission();
+        this.webView.loadUrl("javascript:document.dispatchEvent(new Event('appEnterForeground'));");
+    }
+
+    @Override
+    public void onStop () {
+        super.onStop();
+        this.webView.loadUrl("javascript:document.dispatchEvent(new Event('appEnterBackground'));");
     }
 
     @Override
