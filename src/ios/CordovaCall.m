@@ -18,9 +18,9 @@ BOOL enableDTMF = NO;
 BOOL isRinging = NO;
 PKPushRegistry *_voipRegistry;
 
-NSMutableArray* pendingCallResponses;
-NSString* const PENDING_RESPONSE_ANSWER = @"pendingResponseAnswer";
-NSString* const PENDING_RESPONSE_REJECT = @"pendingResponseReject";
+NSMutableDictionary<NSString*, NSDictionary*> *callReceives;
+NSUUID* pendingAnwser;
+NSUUID* pendingReject;
 
 NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
 
@@ -53,9 +53,8 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     [callbackIds setObject:[NSMutableArray array] forKey:@"speakerOn"];
     [callbackIds setObject:[NSMutableArray array] forKey:@"speakerOff"];
     [callbackIds setObject:[NSMutableArray array] forKey:@"DTMF"];
-    
-    // Add call response (answer or reject) to pending if event listeners are not added at the time of responding
-    pendingCallResponses = [NSMutableArray new];
+
+    callReceives = [[NSMutableDictionary alloc] initWithCapacity:0];
     
     //allows user to make call from recents
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(receiveCallFromRecents:) name:@"RecentsCallNotification" object:nil];
@@ -217,6 +216,7 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
         callUpdate.supportsUngrouping = NO;
         callUpdate.supportsHolding = NO;
         callUpdate.supportsDTMF = enableDTMF;
+        [self saveCallInfo:[callUUID UUIDString] callName:callName callId: callId];
         if (!isRinging) {
             [self.provider reportNewIncomingCallWithUUID:callUUID update:callUpdate completion:^(NSError * _Nullable error) {
                 if(error == nil) {
@@ -238,6 +238,12 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     } else {
         [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Caller id can't be empty"] callbackId:command.callbackId];
     }
+}
+
+- (void)saveCallInfo:(NSString*)callUUID callName:(NSString*)callName callId:(NSString*)callId  {
+    NSDictionary *callData = @{@"callName":callName, @"callId": callId};
+    callReceives[callUUID] = callData;
+    NSLog(@"[objC] save contact call: %@ %@", callUUID, callReceives[callUUID]);
 }
 
 - (void)sendCall:(CDVInvokedUrlCommand*)command
@@ -324,13 +330,13 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     }
     
     // In case of registerEvent answer or reject called after responding to call, trigger cordova event for the appropriate answer
-    if ([eventName isEqualToString:@"answer"] && [pendingCallResponses containsObject:PENDING_RESPONSE_ANSWER]) {
-        [self triggerCordovaEventForCallResponse:@"answer"];
-        [pendingCallResponses removeObject:PENDING_RESPONSE_ANSWER];
+    if ([eventName isEqualToString:@"answer"] && pendingAnwser) {
+        [self triggerAnswerCallResponse:pendingAnwser];
+        pendingAnwser = nil;
     }
-    if ([eventName isEqualToString:@"reject"] && [pendingCallResponses containsObject:PENDING_RESPONSE_REJECT]) {
-        [self triggerCordovaEventForCallResponse:@"reject"];
-        [pendingCallResponses removeObject:PENDING_RESPONSE_REJECT];
+    if ([eventName isEqualToString:@"reject"] && pendingReject) {
+        [self triggerRejectCallResponse:pendingReject];
+        pendingReject = nil;
     }
 }
 
@@ -518,12 +524,10 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     [self setupAudioSession];
     [action fulfill];
     if ([callbackIds[@"answer"] count] == 0) {
-        // callbackId for event not registered, add to pending to trigger on registration
-        [pendingCallResponses addObject:PENDING_RESPONSE_ANSWER];
+        pendingAnwser = action.UUID;
     } else {
-        [self triggerCordovaEventForCallResponse:@"answer"];
+        [self triggerAnswerCallResponse:action.callUUID];
     }
-    //[action fail];
 }
 
 - (void)provider:(CXProvider *)provider performEndCallAction:(CXEndCallAction *)action
@@ -541,9 +545,9 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
         } else {
             if ([callbackIds[@"reject"] count] == 0) {
                 // callbackId for event not registered, add to pending to trigger on registration
-                [pendingCallResponses addObject:PENDING_RESPONSE_REJECT];
+                pendingReject = calls[0].UUID;
             } else {
-                [self triggerCordovaEventForCallResponse:@"reject"];
+                [self triggerRejectCallResponse:calls[0].UUID];
             }
         }
     }
@@ -552,21 +556,25 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
     //[action fail];
 }
 
-- (void)triggerCordovaEventForCallResponse:(NSString*) response {
-    if ([response isEqualToString:@"answer"]) {
-        for (id callbackId in callbackIds[@"answer"]) {
-            CDVPluginResult* pluginResult = nil;
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"answer event called successfully"];
-            [pluginResult setKeepCallbackAsBool:YES];
-            [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
-        }
-    } else if ([response isEqualToString:@"reject"]) {
-        for (id callbackId in callbackIds[@"reject"]) {
-            CDVPluginResult* pluginResult = nil;
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"reject event called successfully"];
-            [pluginResult setKeepCallbackAsBool:YES];
-            [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
-        }
+- (void)triggerAnswerCallResponse:(NSUUID*) callUUID {
+    NSDictionary *contact = callReceives[[callUUID UUIDString]] ?: @{};
+    NSLog(@"[objC] answer data: %@ %@", [callUUID UUIDString], contact);
+    for (id callbackId in callbackIds[@"answer"]) {
+        CDVPluginResult* pluginResult = nil;
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:contact];
+        [pluginResult setKeepCallbackAsBool:YES];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
+    }
+}
+
+- (void)triggerRejectCallResponse:(NSUUID*) callUUID {
+    NSDictionary *contact = callReceives[[callUUID UUIDString]];
+    NSLog(@"[objC] reject data: %@ %@", [callUUID UUIDString],contact);
+    for (id callbackId in callbackIds[@"reject"]) {
+        CDVPluginResult* pluginResult = nil;
+        pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:contact];
+        [pluginResult setKeepCallbackAsBool:YES];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
     }
 }
 

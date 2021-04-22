@@ -28,4 +28,16 @@
     [[NSNotificationCenter defaultCenter] postNotificationName:@"RecentsCallNotification" object:intentInfo];
     return YES;
 }
+
+// - (void)applicationWillResignActive:(UIApplication *)application {
+//     NSLog(@"app will resign active");
+// }
+
+// - (void)applicationDidEnterBackground:(UIApplication *)application {
+//     NSLog(@"app did enter background");
+// }
+
+// - (void)applicationWillEnterForeground:(UIApplication *)application {
+//     NSLog(@"app will enter foreground");
+// }
 @end
