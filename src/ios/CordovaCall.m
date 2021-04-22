@@ -24,8 +24,15 @@ NSUUID* pendingReject;
 
 NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
 
+static CordovaCall *cordovaCallInstance;
+
++ (CordovaCall *) cordovaCallPlugin {
+    return cordovaCallInstance;
+}
+
 - (void)pluginInitialize
 {
+    cordovaCallInstance = self;
     CXProviderConfiguration *providerConfiguration;
     appName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleDisplayName"];
     providerConfiguration = [[CXProviderConfiguration alloc] initWithLocalizedName:appName];
@@ -243,7 +250,6 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
 - (void)saveCallInfo:(NSString*)callUUID callName:(NSString*)callName callId:(NSString*)callId  {
     NSDictionary *callData = @{@"callName":callName, @"callId": callId};
     callReceives[callUUID] = callData;
-    NSLog(@"[objC] save contact call: %@ %@", callUUID, callReceives[callUUID]);
 }
 
 - (void)sendCall:(CDVInvokedUrlCommand*)command
@@ -473,6 +479,14 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
         }
     }
 }
+ 
+- (void) appEnterForeground {
+    [self.webViewEngine evaluateJavaScript:@"document.dispatchEvent(new Event('appEnterForeground'));" completionHandler:nil];
+}
+
+- (void) appEnterBackground {
+    [self.webViewEngine evaluateJavaScript:@"document.dispatchEvent(new Event('appEnterBackground'));" completionHandler:nil];
+}
 
 // CallKit - Provider
 - (void)providerDidReset:(CXProvider *)provider
@@ -568,7 +582,7 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
 }
 
 - (void)triggerRejectCallResponse:(NSUUID*) callUUID {
-    NSDictionary *contact = callReceives[[callUUID UUIDString]];
+    NSDictionary *contact = callReceives[[callUUID UUIDString]] ?: @{};
     NSLog(@"[objC] reject data: %@ %@", [callUUID UUIDString],contact);
     for (id callbackId in callbackIds[@"reject"]) {
         CDVPluginResult* pluginResult = nil;
@@ -576,6 +590,7 @@ NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
         [pluginResult setKeepCallbackAsBool:YES];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
     }
+    [callReceives removeObjectForKey:[callUUID UUIDString]];
 }
 
 - (void)provider:(CXProvider *)provider performSetMutedCallAction:(CXSetMutedCallAction *)action

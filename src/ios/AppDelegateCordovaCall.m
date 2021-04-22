@@ -2,6 +2,8 @@
 #import "Intents/Intents.h"
 #import <CallKit/CallKit.h>
 #import <objc/runtime.h>
+#import "CordovaCall.h"
+
 
 @implementation AppDelegate (CordovaCall)
 
@@ -33,11 +35,13 @@
 //     NSLog(@"app will resign active");
 // }
 
-// - (void)applicationDidEnterBackground:(UIApplication *)application {
-//     NSLog(@"app did enter background");
-// }
+- (void)applicationDidEnterBackground:(UIApplication *)application {
+    NSLog(@"app enter background");
+    [CordovaCall.cordovaCallPlugin appEnterBackground];
+}
 
-// - (void)applicationWillEnterForeground:(UIApplication *)application {
-//     NSLog(@"app will enter foreground");
-// }
+- (void)applicationDidBecomeActive:(UIApplication *)application {
+    NSLog(@"app become active");
+    [CordovaCall.cordovaCallPlugin appEnterForeground];
+}
 @end

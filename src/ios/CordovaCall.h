@@ -10,6 +10,7 @@
 @property (nonatomic, copy) NSString *VoIPPushMethodName;
 @property (nonatomic, copy) NSString *VoIPPushToken;
 
++ (CordovaCall *) cordovaCallPlugin;
 - (void)init:(CDVInvokedUrlCommand*)command;
 
 // CallKit
@@ -39,5 +40,8 @@
 
 - (void)receiveCallFromRecents:(NSNotification *) notification;
 - (void)handleAudioRouteChange:(NSNotification *) notification;
+
+- (void)appEnterBackground;
+- (void)appEnterForeground;
 
 @end
