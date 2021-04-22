@@ -22,6 +22,7 @@ NSMutableDictionary<NSString*, NSDictionary*> *callReceives;
 NSUUID* pendingAnwser;
 NSUUID* pendingReject;
 
+NSDictionary* payloadData;
 NSString* const KEY_VOIP_PUSH_TOKEN = @"PK_deviceToken";
 
 static CordovaCall *cordovaCallInstance;
@@ -572,6 +573,10 @@ static CordovaCall *cordovaCallInstance;
 
 - (void)triggerAnswerCallResponse:(NSUUID*) callUUID {
     NSDictionary *contact = callReceives[[callUUID UUIDString]] ?: @{};
+    if (payloadData && [payloadData count] > 0) {
+        contact["payload"] = payloadData;
+        payloadData = nil;
+    }
     NSLog(@"[objC] answer data: %@ %@", [callUUID UUIDString], contact);
     for (id callbackId in callbackIds[@"answer"]) {
         CDVPluginResult* pluginResult = nil;
@@ -583,6 +588,10 @@ static CordovaCall *cordovaCallInstance;
 
 - (void)triggerRejectCallResponse:(NSUUID*) callUUID {
     NSDictionary *contact = callReceives[[callUUID UUIDString]] ?: @{};
+    if (payloadData && [payloadData count] > 0) {
+        contact["payload"] = payloadData;
+        payloadData = nil;
+    }
     NSLog(@"[objC] reject data: %@ %@", [callUUID UUIDString],contact);
     for (id callbackId in callbackIds[@"reject"]) {
         CDVPluginResult* pluginResult = nil;
@@ -671,6 +680,8 @@ static CordovaCall *cordovaCallInstance;
     
     NSDictionary *data = payload.dictionaryPayload[@"data"];
     NSLog(@"[objC] received data: %@", data);
+
+    payloadData = data;
     
     NSMutableDictionary* results = [NSMutableDictionary dictionaryWithCapacity:2];
     [results setObject:message forKey:@"function"];
@@ -687,7 +698,7 @@ static CordovaCall *cordovaCallInstance;
         NSString * dataString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
         [results setObject:dataString forKey:@"extra"];
         
-        
+
     }
     @catch (NSException *exception) {
         NSLog(@"[objC] error: %@", exception.reason);

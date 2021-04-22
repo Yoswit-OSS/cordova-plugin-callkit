@@ -383,10 +383,17 @@ public class CordovaCall extends CordovaPlugin {
     }
 
     // Receive FCM notification and active incoming call
+    //    {
+    //        Caller: {
+    //            Username: 'Display Name',
+    //                    ConnectionId: 'Unique Call ID'
+    //        }
+    //    }
     public static void onReceiveCallNotify(JSONObject payload) {
         try {
+            JSONObject callData = payload.getJSONObject("Caller");
             CordovaCall.payload = payload;
-            cordovaCallInstance.handleReceiveCall(payload.getString("callName"));
+            cordovaCallInstance.handleReceiveCall(callData.getString("Username"));
         } catch (Exception e) {
             e.printStackTrace();
         }
