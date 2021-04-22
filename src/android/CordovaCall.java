@@ -225,7 +225,7 @@ public class CordovaCall extends CordovaPlugin {
             }
             return true;
         } else if (action.equals("notification")) {
-            CordovaCall.onReceiveCallNotify(new JSONObject(args.getString(0)));
+            CordovaCall.onReceiveCallNotify(args.getJSONObject(0));
             return true;
         }
         return false;
