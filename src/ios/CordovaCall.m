@@ -511,7 +511,14 @@ static CordovaCall *cordovaCallInstance;
     
     [self.provider reportCallWithUUID:action.callUUID updated:callUpdate];
     [action fulfill];
-    NSDictionary *callData = @{@"callName":action.contactIdentifier, @"callId": action.handle.value, @"isVideo": action.video?@YES:@NO, @"message": @"sendCall event called successfully"};
+
+    NSMutableDictionary *callData = [[NSMutableDictionary alloc] init];
+    callData[@"callName"] = action.contactIdentifier;
+    callData[@"callId"] = action.handle.value;
+    callData[@"isVideo"] = action.video?@YES:@NO;
+    callData[@"message"] = @"sendCall event called successfully";
+    // NSDictionary *callData = @{@"callName":action.contactIdentifier, @"callId": action.handle.value, @"isVideo": action.video?@YES:@NO, @"message": @"sendCall event called successfully"};
+
     for (id callbackId in callbackIds[@"sendCall"]) {
         CDVPluginResult* pluginResult = nil;
         pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:callData];
