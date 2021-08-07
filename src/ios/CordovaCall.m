@@ -225,7 +225,7 @@ static CordovaCall *cordovaCallInstance;
         callUpdate.supportsHolding = NO;
         callUpdate.supportsDTMF = enableDTMF;
         [self saveCallInfo:[callUUID UUIDString] callName:callName callId: callId];
-        if (!isRinging) {
+        // if (!isRinging) {
             [self.provider reportNewIncomingCallWithUUID:callUUID update:callUpdate completion:^(NSError * _Nullable error) {
                 if(error == nil) {
                     isRinging = YES;
@@ -240,9 +240,9 @@ static CordovaCall *cordovaCallInstance;
                 [pluginResult setKeepCallbackAsBool:YES];
                 [self.commandDelegate sendPluginResult:pluginResult callbackId:callbackId];
             }
-        } else {
-            [self endCall:command];
-        }
+        // } else {
+        //     [self endCall:command];
+        // }
     } else {
         [self.commandDelegate sendPluginResult:[CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Caller id can't be empty"] callbackId:command.callbackId];
     }
